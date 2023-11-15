@@ -1,0 +1,6 @@
+
+# common
+**/tmp
+
+# mlir examples
+**/codegen.mlir
