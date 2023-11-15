@@ -3,4 +3,4 @@
 **/tmp
 
 # mlir examples
-**/codegen.mlir
+**/tmp_codegen.mlir
