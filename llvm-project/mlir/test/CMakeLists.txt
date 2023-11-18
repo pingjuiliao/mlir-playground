@@ -121,6 +121,7 @@ if(LLVM_BUILD_EXAMPLES)
     toyc-ch3
     toyc-ch4
     toyc-ch5
+    toyc-ch5-opt
     )
   if(MLIR_ENABLE_EXECUTION_ENGINE)
     list(APPEND MLIR_TEST_DEPENDS
