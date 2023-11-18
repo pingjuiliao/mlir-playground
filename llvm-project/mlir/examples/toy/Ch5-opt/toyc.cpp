@@ -153,8 +153,10 @@ int dumpMLIR() {
     }
   }
 
-  if (mlir::failed(pm.run(*module)))
+  if (mlir::failed(pm.run(*module))) {
+    llvm::errs() << "Failed\n";
     return 4;
+  }
 
   module->dump();
   return 0;

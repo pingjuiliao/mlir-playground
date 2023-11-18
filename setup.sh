@@ -11,7 +11,7 @@ cmake -G Ninja ../llvm \
    -DMLIR_INCLUDE_INTEGRATION_TESTS=Off \
    -DCMAKE_C_COMPILER=clang \
    -DCMAKE_CXX_COMPILER=clang++ \
-   -DLLVM_ENABLE_LLD=ON
+   -DLLVM_ENABLE_LLD=Off
 # Using clang and lld speeds up the build, we recommend adding:
 #  -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DLLVM_ENABLE_LLD=ON
 # CCache can drastically speed up further rebuilds, try adding:

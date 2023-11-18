@@ -7,6 +7,7 @@
 #include "mlir/IR/BuiltinDialect.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/PatternMatch.h"
+#include "mlir/Transforms/DialectConversion.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 #include <set>
@@ -18,10 +19,9 @@ struct ConstantPlusOne : public OpRewritePattern<arith::ConstantOp> {
   using OpRewritePattern<arith::ConstantOp>::OpRewritePattern;
   LogicalResult matchAndRewrite(arith::ConstantOp op,
       PatternRewriter &rewriter) const final {
-    // Location loc = op.getLoc();
-    llvm::errs() << "Attr: " << *op << "\n";
-    /*Attribute oldValue = op.getValueAttr();
-    llvm::errs() << oldValue << "\n";
+    Location loc = op.getLoc();
+    Attribute oldValue = op.getValueAttr();
+    llvm::errs() << "val" << *op << "\n";
     if (auto floatAttr = dyn_cast<FloatAttr>(oldValue)) {
       APFloat f = floatAttr.getValue();
       FloatAttr plusOne = rewriter.getF64FloatAttr(f.convertToDouble() + 1.0);
@@ -29,8 +29,7 @@ struct ConstantPlusOne : public OpRewritePattern<arith::ConstantOp> {
       rewriter.replaceOp(op, plusOneOp);
       return success();
     }
-    return rewriter.notifyMatchFailure(loc, "unhandled constant");*/
-    return success();
+    return rewriter.notifyMatchFailure(loc, "unhandled constant");
   }
 };
 } // namespace
@@ -44,12 +43,16 @@ struct MyTransformPass :
     Operation *op = getOperation();
     llvm::errs() << "Operation: " << *op << "\n";
     RewritePatternSet patterns(&getContext());
-    patterns.add<ConstantPlusOne>(&getContext());
+    ConversionTarget target(getContext());
     
+    target.addLegalDialect<arith::ArithDialect>();
+
+    patterns.add<ConstantPlusOne>(&getContext());
     // MLIR 18.0.0 features
     // GreedyRewriteConfig config;
     // config.strictMode = GreedyRewriteStrictness::ExistingOps;
-    if (failed(applyPatternsAndFoldGreedily(op, std::move(patterns)))) {
+    if (failed(applyPartialConversion(getOperation(), target,
+                                      std::move(patterns)))) {
       signalPassFailure();
     }
     return;
