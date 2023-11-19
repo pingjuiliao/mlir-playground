@@ -17,21 +17,39 @@ using namespace mlir;
 namespace {
 struct ConstantPlusOne : public OpRewritePattern<arith::ConstantOp> {
   using OpRewritePattern<arith::ConstantOp>::OpRewritePattern;
+  
   LogicalResult matchAndRewrite(arith::ConstantOp op,
-      PatternRewriter &rewriter) const final {
-    Location loc = op.getLoc();
-    Attribute oldValue = op.getValueAttr();
-    llvm::errs() << "val" << *op << "\n";
-    if (auto floatAttr = dyn_cast<FloatAttr>(oldValue)) {
-      APFloat f = floatAttr.getValue();
-      FloatAttr plusOne = rewriter.getF64FloatAttr(f.convertToDouble() + 1.0);
-      Value plusOneOp = rewriter.create<arith::ConstantOp>(loc, plusOne);
-      rewriter.replaceOp(op, plusOneOp);
-      return success();
-    }
-    return rewriter.notifyMatchFailure(loc, "unhandled constant");
+      PatternRewriter &rewriter) const override {
+    return success();
   }
 };
+
+/// Make all the constants as 1337.
+/// refer to mlir/lib/Dialect/Shape/Transforms/RemoveShapeConstraints.cpp
+class LeetOnly : public OpRewritePattern<arith::ConstantOp> {
+public:
+  using OpRewritePattern<arith::ConstantOp>::OpRewritePattern;
+  
+  LogicalResult matchAndRewrite(arith::ConstantOp op,
+      PatternRewriter &rewriter) const override {
+    Operation* thisOp = static_cast<Operation*>(&op);
+    llvm::errs() << thisOp->hasAttr("myattr") << "\n";
+    Location loc = op.getLoc();
+    Attribute attr = op.getValueAttr();
+    if (auto floatAttr = dyn_cast<FloatAttr>(attr)) {
+      double f64 = floatAttr.getValue().convertToDouble();
+      if (f64 == 1337.) {
+        return success();
+      }
+      llvm::errs() << "processing... " << f64 << " at " << loc << "\n";
+      FloatAttr leet = rewriter.getF64FloatAttr(1337.);
+      Value leetOp = rewriter.create<arith::ConstantOp>(loc, leet);
+      rewriter.replaceOp(op, leetOp);
+    }
+    return success();
+  }
+};
+
 } // namespace
 
 namespace {
@@ -40,22 +58,13 @@ struct MyTransformPass :
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(MyTransformPass)
   
   void runOnOperation() override {
-    Operation *op = getOperation();
-    llvm::errs() << "Operation: " << *op << "\n";
+    Operation* op = getOperation();
     RewritePatternSet patterns(&getContext());
-    ConversionTarget target(getContext());
-    
-    target.addLegalDialect<arith::ArithDialect>();
-
-    patterns.add<ConstantPlusOne>(&getContext());
+    patterns.add<LeetOnly>(patterns.getContext());
     // MLIR 18.0.0 features
     // GreedyRewriteConfig config;
     // config.strictMode = GreedyRewriteStrictness::ExistingOps;
-    if (failed(applyPartialConversion(getOperation(), target,
-                                      std::move(patterns)))) {
-      signalPassFailure();
-    }
-    return;
+    (void)applyPatternsAndFoldGreedily(op, std::move(patterns));
   }
 };
 } // namespace
