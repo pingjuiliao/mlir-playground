@@ -32,8 +32,6 @@ public:
   
   LogicalResult matchAndRewrite(arith::ConstantOp op,
       PatternRewriter &rewriter) const override {
-    Operation* thisOp = static_cast<Operation*>(&op);
-    llvm::errs() << thisOp->hasAttr("myattr") << "\n";
     Location loc = op.getLoc();
     Attribute attr = op.getValueAttr();
     if (auto floatAttr = dyn_cast<FloatAttr>(attr)) {
