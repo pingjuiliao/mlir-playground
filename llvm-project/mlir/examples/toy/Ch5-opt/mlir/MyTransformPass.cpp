@@ -48,6 +48,31 @@ public:
   }
 };
 
+class LeetOnly2 : public OpRewritePattern<arith::ConstantOp> {
+public:
+  using OpRewritePattern<arith::ConstantOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(arith::ConstantOp op, 
+      PatternRewriter &rewriter) const override {
+    static int modified = 0;
+    if (modified >= 1)
+      return failure();
+
+    Attribute attr = op.getValueAttr();
+    auto floatAttr = dyn_cast_or_null<FloatAttr>(attr);
+    if (!floatAttr)
+      return success();
+    double f64 = floatAttr.getValue().convertToDouble();
+    if (f64 == 1337.)
+      return success();
+    FloatAttr leet = rewriter.getF64FloatAttr(1337.);
+    Value leetOp = rewriter.create<arith::ConstantOp>(op.getLoc(), leet);
+    rewriter.replaceOp(op, leetOp);
+    modified += 1;
+    return success();
+  }
+};
+
 } // namespace
 
 namespace {
@@ -58,7 +83,7 @@ struct MyTransformPass :
   void runOnOperation() override {
     Operation* op = getOperation();
     RewritePatternSet patterns(&getContext());
-    patterns.add<LeetOnly>(patterns.getContext());
+    patterns.add<LeetOnly2>(patterns.getContext());
     // MLIR 18.0.0 features
     // GreedyRewriteConfig config;
     // config.strictMode = GreedyRewriteStrictness::ExistingOps;
