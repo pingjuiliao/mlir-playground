@@ -2,6 +2,7 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/IR/BuiltinDialect.h"
@@ -64,7 +65,7 @@ public:
       return success();
     double f64 = floatAttr.getValue().convertToDouble();
     if (f64 == 1337.)
-      return success();
+      return failure();
     FloatAttr leet = rewriter.getF64FloatAttr(1337.);
     Value leetOp = rewriter.create<arith::ConstantOp>(op.getLoc(), leet);
     rewriter.replaceOp(op, leetOp);
@@ -73,6 +74,38 @@ public:
   }
 };
 
+class StoreOpt : public OpRewritePattern<AffineStoreOp> {
+public:
+  using OpRewritePattern<AffineStoreOp>::OpRewritePattern;
+  LogicalResult matchAndRewrite(AffineStoreOp op,
+      PatternRewriter &rewriter) const override {
+    llvm::errs() << *op << "\n";
+    // llvm::errs() << op.getValue() << "\n";
+    for (unsigned int i = 0; i < op->getNumOperands(); ++i) {
+      llvm::errs() << i << ": " << op->getOperand(i) << "\n";
+    }
+
+    Value lhs = op->getOperand(0);
+    Operation* lhsOp = lhs.getDefiningOp();
+    if (auto constantOp = dyn_cast<arith::ConstantOp>(lhsOp)) {
+      Attribute attr = constantOp.getValueAttr();
+      auto floatAttr = dyn_cast_or_null<FloatAttr>(attr);
+      if (!floatAttr)
+        return failure();
+
+      double f64 = floatAttr.getValue().convertToDouble();
+      if (f64 > 1337.)
+        return failure();
+      
+      FloatAttr leet = rewriter.getF64FloatAttr(f64 + 1337.);
+      Value leetOp = rewriter.create<arith::ConstantOp>(
+          constantOp.getLoc(), leet);
+      rewriter.replaceOp(constantOp, leetOp);
+      return success();
+    }
+    return failure();
+  }
+};
 } // namespace
 
 namespace {
@@ -83,7 +116,7 @@ struct MyTransformPass :
   void runOnOperation() override {
     Operation* op = getOperation();
     RewritePatternSet patterns(&getContext());
-    patterns.add<LeetOnly2>(patterns.getContext());
+    patterns.add<StoreOpt>(patterns.getContext());
     // MLIR 18.0.0 features
     // GreedyRewriteConfig config;
     // config.strictMode = GreedyRewriteStrictness::ExistingOps;
@@ -91,6 +124,7 @@ struct MyTransformPass :
   }
 };
 } // namespace
+
 
 /// Create a My Transformation Pass
 std::unique_ptr<mlir::Pass> mlir::createMyTransformPass() {
